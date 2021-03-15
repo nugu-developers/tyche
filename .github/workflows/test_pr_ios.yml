@@ -1,0 +1,30 @@
+name: Test PR for iOS
+on: pull_request
+jobs:
+  test:
+    runs-on: macOS-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Clone KeenSense
+        run: git clone https://github.com/nugu-developers/keensense-ios
+      - name: Copy library
+        run: cp -rf iOS/Libraries/libTycheWakeup.a keensense-ios/KeenSense/Libraries/libTycheWakeup.a
+      - name: Copy common library
+        run: cp -rf iOS/Libraries/libTychecommon.a keensense-ios/KeenSense/Libraries/libTycheWakeupCommon.a
+      - name: Change directory
+        run: cd keensense-ios
+      - name: Cache Carthage
+        id: cache-carthage
+        uses: actions/cache@v2
+        with:
+          path: Carthage
+          key: ${{ runner.os }}-carthage-${{ hashFiles('**/Cartfile.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-carthage-
+      - name: Update Carthage
+        if: steps.cache-carthage.outputs.cache-hit != 'true'
+        run: ./carthage.sh bootstrap --no-use-binaries --platform iOS --cache-builds
+        
+      - name: Run tests
+        run: xcodebuild test -project KeenSense.xcodeproj -scheme KeenSenseTests -destination 'platform=iOS Simulator,name=iPhone 11,OS=latest'
